@@ -20,7 +20,7 @@ import (
 	"go.podman.io/podman/v6/pkg/machine/env"
 	provider2 "go.podman.io/podman/v6/pkg/machine/provider"
 	"go.podman.io/podman/v6/pkg/machine/shim"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var infoDescription = `Display information pertaining to the machine host.`

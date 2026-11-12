@@ -48,7 +48,7 @@ import (
 	"go.podman.io/storage/pkg/chrootarchive"
 	"go.podman.io/storage/pkg/fileutils"
 	"go.podman.io/storage/pkg/stringid"
-	yamlv3 "gopkg.in/yaml.v3"
+	yamlv4 "go.yaml.in/yaml/v4"
 	"sigs.k8s.io/yaml"
 )
 
@@ -1719,7 +1719,7 @@ func readConfigMapFromFile(r io.Reader, mode entities.KubeValidateMode) ([]v1.Co
 func splitMultiDocYAML(yamlContent []byte) ([][]byte, error) {
 	var documentList [][]byte
 
-	d := yamlv3.NewDecoder(bytes.NewReader(yamlContent))
+	d := yamlv4.NewDecoder(bytes.NewReader(yamlContent))
 	for {
 		var o any
 		// read individual document
@@ -1736,7 +1736,7 @@ func splitMultiDocYAML(yamlContent []byte) ([][]byte, error) {
 		}
 
 		// back to bytes
-		document, err := yamlv3.Marshal(o)
+		document, err := yamlv4.Marshal(o)
 		if err != nil {
 			return nil, fmt.Errorf("individual doc yaml could not be marshalled: %w", err)
 		}
@@ -1754,7 +1754,7 @@ func splitMultiDocYAML(yamlContent []byte) ([][]byte, error) {
 				return nil, err
 			}
 			for _, item := range kubeList.Items {
-				itemDocument, err := yamlv3.Marshal(item)
+				itemDocument, err := yamlv4.Marshal(item)
 				if err != nil {
 					return nil, fmt.Errorf("individual doc yaml could not be marshalled: %w", err)
 				}
