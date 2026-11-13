@@ -333,6 +333,7 @@ type ShowTrustOptions struct {
 	PolicyPath   string
 	Raw          bool
 	RegistryPath string
+	Format       string `json:",omitempty"`
 }
 
 // ShowTrustReport describes the results of show trust

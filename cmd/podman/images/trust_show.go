@@ -23,7 +23,11 @@ var (
 		RunE:              showTrust,
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: common.AutocompleteRegistries,
-		Example:           "",
+		Example:           "podman image trust show -j
+podman image trust show --noheading=true
+podman image trust show --raw=true
+podman image trust show --signature-policy /tmp/containers/policy.json
+podman image trust show --format "{{.Transport}} {{.Name}} {{.Type}}"",
 	}
 )
 
@@ -41,6 +45,11 @@ func init() {
 	showFlags.BoolVar(&showTrustOptions.Raw, "raw", false, "Output raw policy file")
 	showFlags.StringVar(&showTrustOptions.RegistryPath, "registrypath", "", "")
 	showFlags.BoolVarP(&noHeading, "noheading", "n", false, "Do not print column headings")
+	
+	formatFlagName := "format"
+	showFlags.StringVarP(&showTrustOptions.Format, formatFlagName, "f", "json", "Format the output to a Go template or json")
+	_ = inspectCmd.RegisterFlagCompletionFunc(formatFlagName, completion.AutocompleteDefault)
+
 	_ = showFlags.MarkHidden("registrypath")
 }
 
@@ -48,6 +57,27 @@ func showTrust(cmd *cobra.Command, args []string) error {
 	trust, err := registry.ImageEngine().ShowTrust(cmd.Context(), args, showTrustOptions)
 	if err != nil {
 		return err
+	}
+
+	switch {
+	case report.IsJSON(showTrustOptions.Format) || showTrustOptions.Format == "":
+		prettyJSON, err := json.MarshalIndent(list, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(prettyJSON))
+		return nil
+	default:
+		// Landing here implies user has given a custom --format
+		format := report.NormalizeFormat(showTrustOptions.Format)
+		rpt, err := report.New(os.Stdout, "manifest inspect").Parse(report.OriginUser, format)
+		if err != nil {
+			return err
+		}
+		defer rpt.Flush()
+
+		// return rpt.Execute([]any{list})
+		err = rpt.Execute([]any{list})
 	}
 
 	switch {
