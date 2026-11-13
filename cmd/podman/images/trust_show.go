@@ -23,11 +23,11 @@ var (
 		RunE:              showTrust,
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: common.AutocompleteRegistries,
-		Example:           "podman image trust show -j
+		Example: `podman image trust show -j
 podman image trust show --noheading=true
 podman image trust show --raw=true
 podman image trust show --signature-policy /tmp/containers/policy.json
-podman image trust show --format "{{.Transport}} {{.Name}} {{.Type}}"",
+podman image trust show --format "{{.Transport}} {{.Name}} {{.Type}}"`,
 	}
 )
 
@@ -45,7 +45,7 @@ func init() {
 	showFlags.BoolVar(&showTrustOptions.Raw, "raw", false, "Output raw policy file")
 	showFlags.StringVar(&showTrustOptions.RegistryPath, "registrypath", "", "")
 	showFlags.BoolVarP(&noHeading, "noheading", "n", false, "Do not print column headings")
-	
+
 	formatFlagName := "format"
 	showFlags.StringVarP(&showTrustOptions.Format, formatFlagName, "f", "json", "Format the output to a Go template or json")
 	_ = inspectCmd.RegisterFlagCompletionFunc(formatFlagName, completion.AutocompleteDefault)
@@ -60,27 +60,6 @@ func showTrust(cmd *cobra.Command, args []string) error {
 	}
 
 	switch {
-	case report.IsJSON(showTrustOptions.Format) || showTrustOptions.Format == "":
-		prettyJSON, err := json.MarshalIndent(list, "", "    ")
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(prettyJSON))
-		return nil
-	default:
-		// Landing here implies user has given a custom --format
-		format := report.NormalizeFormat(showTrustOptions.Format)
-		rpt, err := report.New(os.Stdout, "manifest inspect").Parse(report.OriginUser, format)
-		if err != nil {
-			return err
-		}
-		defer rpt.Flush()
-
-		// return rpt.Execute([]any{list})
-		err = rpt.Execute([]any{list})
-	}
-
-	switch {
 	case showTrustOptions.Raw:
 		fmt.Println(string(trust.Raw))
 		return nil
@@ -91,26 +70,39 @@ func showTrust(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println(string(b))
 		return nil
-	}
-	rpt := report.New(os.Stdout, cmd.Name())
-	defer rpt.Flush()
-
-	hdrs := report.Headers(imageReporter{}, map[string]string{
-		"Transport":      "Transport",
-		"RepoName":       "Name",
-		"Type":           "Type",
-		"GPGId":          "Id",
-		"SignatureStore": "Store",
-	})
-	rpt, err = rpt.Parse(report.OriginPodman,
-		"{{range . }}{{.Transport}}\t{{.RepoName}}\t{{.Type}}\t{{.GPGId}}\t{{.SignatureStore}}\n{{end -}}")
-	if err != nil {
-		return err
-	}
-	if !noHeading {
-		if err := rpt.Execute(hdrs); err != nil {
+	case report.IsJSON(showTrustOptions.Format) || showTrustOptions.Format == "":
+		prettyJSON, err := json.MarshalIndent(trust, "", "    ")
+		if err != nil {
 			return err
 		}
+		fmt.Println(string(prettyJSON))
+		return nil
+	default:
+		// Landing here implies user has given a custom --format
+		format := report.NormalizeFormat(showTrustOptions.Format)
+		rpt, err := report.New(os.Stdout, cmd.Name()).Parse(report.OriginUser, format)
+		if err != nil {
+			return err
+		}
+		defer rpt.Flush()
+
+		hdrs := report.Headers(imageReporter{}, map[string]string{
+			"Transport":      "Transport",
+			"RepoName":       "Name",
+			"Type":           "Type",
+			"GPGId":          "Id",
+			"SignatureStore": "Store",
+		})
+		rpt, err = rpt.Parse(report.OriginPodman,
+			"{{range . }}{{.Transport}}\t{{.RepoName}}\t{{.Type}}\t{{.GPGId}}\t{{.SignatureStore}}\n{{end -}}")
+		if err != nil {
+			return err
+		}
+		if !noHeading {
+			if err := rpt.Execute(hdrs); err != nil {
+				return err
+			}
+		}
+		return rpt.Execute(trust.Policies)
 	}
-	return rpt.Execute(trust.Policies)
 }
